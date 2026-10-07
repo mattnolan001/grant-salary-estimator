@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grant Salary Estimator</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --text: #1b1f24;
+    --muted: #5b6470;
+    --border: #d9dde3;
+    --accent: #0b5cad;
+    --accent-text: #ffffff;
+    --warn-bg: #fff6e0;
+    --warn-border: #e7c25c;
+    --row-alt: #f2f4f7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14171b;
+      --surface: #1d2126;
+      --text: #e6e9ed;
+      --muted: #9aa3ad;
+      --border: #343a42;
+      --accent: #5aa2f0;
+      --accent-text: #0d1117;
+      --warn-bg: #2e2714;
+      --warn-border: #7a6420;
+      --row-alt: #22272d;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14171b;
+    --surface: #1d2126;
+    --text: #e6e9ed;
+    --muted: #9aa3ad;
+    --border: #343a42;
+    --accent: #5aa2f0;
+    --accent-text: #0d1117;
+    --warn-bg: #2e2714;
+    --warn-border: #7a6420;
+    --row-alt: #22272d;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.1rem; margin: 0 0 12px; }
+  .sub { color: var(--muted); margin: 0 0 16px; }
+  .notice {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 20px;
+  }
+  .notice ul { margin: 6px 0 0; padding-left: 20px; }
+  section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .role {
+    display: grid;
+    grid-template-columns: 1.4fr 0.8fr 1.6fr 1.1fr 0.7fr 0.7fr auto;
+    gap: 10px;
+    align-items: end;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .role:first-of-type { padding-top: 0; }
+  label { display: flex; flex-direction: column; font-size: 0.8rem; color: var(--muted); gap: 3px; }
+  input, select {
+    font: inherit;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    width: 100%;
+    min-width: 0;
+  }
+  button {
+    font: inherit;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button.remove { padding: 6px 10px; }
+  .role-total { grid-column: 1 / -1; font-size: 0.9rem; color: var(--muted); }
+  .role-total strong { color: var(--text); }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+  tfoot td { font-weight: 700; border-top: 2px solid var(--border); }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; color: var(--accent); }
+  details table { margin-top: 8px; font-size: 0.9rem; }
+  details tbody tr:nth-child(even) { background: var(--row-alt); }
+  .grand { font-size: 1.3rem; margin: 12px 0 0; }
+  .muted { color: var(--muted); font-size: 0.85rem; }
+  .copied { color: var(--muted); font-size: 0.85rem; align-self: center; }
+  @media (max-width: 760px) {
+    .role { grid-template-columns: 1fr 1fr; }
+    .role .label-field { grid-column: 1 / -1; }
+    .role .point-field { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Grant Salary Cost Estimator</h1>
+  <p class="sub">University of Edinburgh, UE02–UE10 salary scales</p>
+
+  <div class="notice">
+    <strong>Very approximate.</strong> Edinburgh Research Office will do the final costing. Assumptions:
+    <ul id="assumptions"></ul>
+  </div>
+
+  <section>
+    <h2>Roles</h2>
+    <div id="roles"></div>
+    <div class="actions">
+      <button class="primary" id="add-role" type="button">Add role</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Cost by grant year</h2>
+    <p class="muted" id="year-note"></p>
+    <div class="table-wrap"><table id="summary"></table></div>
+    <p class="grand">Total: <strong id="grand-total">£0</strong></p>
+    <div class="actions">
+      <button id="copy" type="button">Copy as table</button>
+      <span class="copied" id="copied"></span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Monthly detail</h2>
+    <div id="details"></div>
+  </section>
+</main>
+
+<script>
+// ===================== CONFIG: update when a new salary scale is published =====================
+const CONFIG = {
+  scaleLabel: "Full-time salaries from 1 November 2025 (grade structure 1 April 2026)",
+  scaleDate: "2025-11-01",      // salaries below apply from this date
+  onCostRate: 0.30,             // on-costs added to base salary
+  upliftRate: 0.04,             // compounded every 1 August after scaleDate (increment + inflation)
+  // Spine point -> full-time annual salary (£)
+  spine: {
+    9: 24547, 10: 24729, 11: 24911, 12: 25094, 13: 25276, 14: 25804, 15: 26093, 16: 26707,
+    17: 27319, 18: 28031, 19: 28778, 20: 29588, 21: 30378, 22: 31236, 23: 32080, 24: 33002,
+    25: 33951, 26: 34610, 27: 35608, 28: 36636, 29: 37694, 30: 38784, 31: 39906, 32: 41064,
+    33: 42254, 34: 43482, 35: 44746, 36: 46049, 37: 47389, 38: 48822, 39: 50253, 40: 51753,
+    41: 53301, 42: 54893, 43: 56535, 44: 58225, 45: 59966, 46: 61759, 47: 63606, 48: 65509,
+    49: 67468, 50: 69488, 51: 71566, 52: 73692, 53: 76087, 54: 78469, 55: 81016, 56: 83558,
+    57: 86268, 58: 88979, 59: 92087, 60: 95193, 61: 98517, 62: 101262, 63: 105939, 64: 110028,
+    65: 113301, 66: 116575
+  },
+  // Real Living Wage supplement added to the low spine points (£ p.a.)
+  rlwSupplement: { 9: 1197, 10: 987, 11: 696, 12: 409, 13: 27 },
+  // Grade -> [first, last] normal points and [first, last] contribution points
+  grades: {
+    UE02: { normal: [9, 9],   contribution: [10, 10] },
+    UE03: { normal: [10, 14], contribution: [15, 15] },
+    UE04: { normal: [15, 19], contribution: [20, 20] },
+    UE05: { normal: [20, 25], contribution: [26, 27] },
+    UE06: { normal: [26, 31], contribution: [32, 33] },
+    UE07: { normal: [32, 38], contribution: [39, 41] },
+    UE08: { normal: [39, 46], contribution: [47, 49] },
+    UE09: { normal: [47, 54], contribution: [55, 57] },
+    UE10: { normal: [55, 60], contribution: [61, 66] }
+  }
+};
+// ==============================================================================================
+
+const STORAGE_KEY = "grant-salary-estimator-v1";
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DAY_MS = 86400000;
+
+// ---------- Date helpers (UTC day numbers, so time zones never shift a date) ----------
+function parseISO(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || "");
+  if (!m) return null;
+  return { y: +m[1], m: +m[2], d: +m[3] };
+}
+function toDayNum({ y, m, d }) { return Date.UTC(y, m - 1, d) / DAY_MS; }
+function fromDayNum(n) {
+  const dt = new Date(n * DAY_MS);
+  return { y: dt.getUTCFullYear(), m: dt.getUTCMonth() + 1, d: dt.getUTCDate() };
+}
+function daysInMonth(y, m) { return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
+function addMonths({ y, m, d }, n) {
+  const total = (y * 12 + (m - 1)) + n;
+  const ny = Math.floor(total / 12), nm = total % 12 + 1;
+  return { y: ny, m: nm, d: Math.min(d, daysInMonth(ny, nm)) };
+}
+function fmtDate({ y, m, d }) { return `${d} ${MONTHS[m - 1]} ${y}`; }
+
+// ---------- Calculation ----------
+const SCALE_DATE = parseISO(CONFIG.scaleDate);
+// First 1 August strictly after the scale date
+const FIRST_UPLIFT_YEAR = SCALE_DATE.m < 8 ? SCALE_DATE.y : SCALE_DATE.y + 1;
+
+// Number of 1 August uplifts that have applied by the given date
+function upliftsBy({ y, m }) {
+  return Math.max(0, y - FIRST_UPLIFT_YEAR + (m >= 8 ? 1 : 0));
+}
+
+function baseSalary(point) {
+  return (CONFIG.spine[point] || 0) + (CONFIG.rlwSupplement[point] || 0);
+}
+
+// Annual cost (salary + on-costs + uplifts) in effect on a date, full time
+function annualCost(point, date) {
+  return baseSalary(point) * (1 + CONFIG.onCostRate) * Math.pow(1 + CONFIG.upliftRate, upliftsBy(date));
+}
+
+// Grant year index (0-based) of a date, counted in 12-month steps from projectStart
+function grantYearIndex(projectStart, date) {
+  let months = (date.y - projectStart.y) * 12 + (date.m - projectStart.m);
+  if (date.d < projectStart.d) months -= 1;
+  return Math.floor(months / 12);
+}
+
+// Cost one role. Each calendar month costs annual/12 x FTE, pro-rated by days covered.
+// Costs are accumulated daily so partial months and grant-year boundaries split exactly.
+function costRole(role, projectStart) {
+  const start = parseISO(role.start);
+  const months = Math.floor(Number(role.months));
+  const fte = Number(role.fte) / 100;
+  const empty = { total: 0, byYear: [], byMonth: [] };
+  if (!start || !(months > 0) || !(fte > 0) || !CONFIG.spine[role.point]) return empty;
+
+  const first = toDayNum(start);
+  const last = toDayNum(addMonths(start, months)) - 1;
+  const byYear = [];
+  const byMonth = new Map();
+  let total = 0;
+
+  for (let n = first; n <= last; n++) {
+    const date = fromDayNum(n);
+    const annual = annualCost(role.point, date);
+    const cost = annual / 12 / daysInMonth(date.y, date.m) * fte;
+    total += cost;
+
+    const yi = grantYearIndex(projectStart, date);
+    byYear[yi] = (byYear[yi] || 0) + cost;
+
+    const key = date.y * 12 + date.m;
+    if (!byMonth.has(key)) byMonth.set(key, { y: date.y, m: date.m, annual, days: 0, cost: 0 });
+    const row = byMonth.get(key);
+    row.days += 1;
+    row.cost += cost;
+  }
+  for (let i = 0; i < byYear.length; i++) byYear[i] = byYear[i] || 0;
+  return { total, byYear, byMonth: [...byMonth.values()], first: fromDayNum(first), last: fromDayNum(last) };
+}
+
+// ---------- State ----------
+function nextFirstOfMonth() {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth() + 1;
+  const n = addMonths({ y, m, d: 1 }, 1);
+  return `${n.y}-${String(n.m).padStart(2, "0")}-01`;
+}
+function newRole() {
+  return { label: "Postdoctoral Research Associate", grade: "UE07", point: 32, start: nextFirstOfMonth(), months: 36, fte: 100 };
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const roles = JSON.parse(raw);
+      if (Array.isArray(roles) && roles.length) return roles;
+    }
+  } catch (e) { /* storage unavailable */ }
+  return [newRole()];
+}
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(roles)); } catch (e) { /* ignore */ }
+}
+let roles = loadState();
+
+// ---------- Rendering ----------
+const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 });
+const pct = (r) => `${+(r * 100).toFixed(2)}%`;
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function pointOptions(grade, selected) {
+  const g = CONFIG.grades[grade];
+  if (!g) return "";
+  const opts = [];
+  for (const [kind, [a, b]] of [["normal", g.normal], ["contribution", g.contribution]]) {
+    for (let p = a; p <= b; p++) {
+      const tag = kind === "contribution" ? " (contribution)" : "";
+      opts.push(`<option value="${p}"${p === selected ? " selected" : ""}>Point ${p}: ${gbp.format(baseSalary(p))}${tag}</option>`);
+    }
+  }
+  return opts.join("");
+}
+
+function renderAssumptions() {
+  document.getElementById("assumptions").innerHTML = [
+    `Salaries: ${escapeHTML(CONFIG.scaleLabel)}.`,
+    `Base salary + ${pct(CONFIG.onCostRate)} for on-costs.`,
+    `+${pct(CONFIG.upliftRate)} compounded every 1 August from 1 Aug ${FIRST_UPLIFT_YEAR}. This covers increments and inflation, so there is no separate spine progression.`
+  ].map((t) => `<li>${t}</li>`).join("");
+}
+
+function renderRoles() {
+  const container = document.getElementById("roles");
+  container.innerHTML = roles.map((r, i) => `
+    <div class="role" data-i="${i}">
+      <label class="label-field">Role
+        <input data-k="label" value="${escapeHTML(r.label)}" placeholder="e.g. Postdoc">
+      </label>
+      <label>Grade
+        <select data-k="grade">
+          ${Object.keys(CONFIG.grades).map((g) => `<option${g === r.grade ? " selected" : ""}>${g}</option>`).join("")}
+        </select>
+      </label>
+      <label class="point-field">Spine point (base salary)
+        <select data-k="point">${pointOptions(r.grade, r.point)}</select>
+      </label>
+      <label>Start date
+        <input type="date" data-k="start" value="${escapeHTML(r.start)}">
+      </label>
+      <label>Months
+        <input type="number" data-k="months" min="1" step="1" value="${escapeHTML(r.months)}">
+      </label>
+      <label>FTE %
+        <input type="number" data-k="fte" min="1" max="100" step="1" value="${escapeHTML(r.fte)}">
+      </label>
+      <button class="remove" type="button" data-remove="${i}" title="Remove role" aria-label="Remove role"${roles.length === 1 ? " disabled" : ""}>✕</button>
+      <div class="role-total" data-total="${i}"></div>
+    </div>`).join("");
+}
+
+function computeAll() {
+  const starts = roles.map((r) => parseISO(r.start)).filter(Boolean);
+  if (!starts.length) return { projectStart: null, results: roles.map(() => ({ total: 0, byYear: [], byMonth: [] })) };
+  const projectStart = starts.reduce((a, b) => (toDayNum(b) < toDayNum(a) ? b : a));
+  return { projectStart, results: roles.map((r) => costRole(r, projectStart)) };
+}
+
+let lastTSV = "";
+
+function renderResults() {
+  const { projectStart, results } = computeAll();
+  const nYears = Math.max(1, ...results.map((r) => r.byYear.length));
+  const yearHeads = Array.from({ length: nYears }, (_, i) => `Year ${i + 1}`);
+
+  // Per-role totals under each role row
+  results.forEach((res, i) => {
+    const el = document.querySelector(`[data-total="${i}"]`);
+    if (!el) return;
+    el.innerHTML = res.total > 0
+      ? `${fmtDate(res.first)} to ${fmtDate(res.last)}: <strong>${gbp.format(res.total)}</strong>`
+      : "Enter a start date, months and FTE to see a cost.";
+  });
+
+  document.getElementById("year-note").textContent = projectStart
+    ? `Grant years run in 12-month blocks from the earliest role start (${fmtDate(projectStart)}).`
+    : "";
+
+  // Summary table
+  const yearTotals = Array(nYears).fill(0);
+  let grand = 0;
+  const bodyRows = roles.map((r, i) => {
+    const res = results[i];
+    const cells = yearHeads.map((_, y) => {
+      const v = res.byYear[y] || 0;
+      yearTotals[y] += v;
+      return v;
+    });
+    grand += res.total;
+    return { name: r.label || `Role ${i + 1}`, cells, total: res.total };
+  });
+
+  document.getElementById("summary").innerHTML = `
+    <thead><tr><th>Role</th>${yearHeads.map((h) => `<th>${h}</th>`).join("")}<th>Total</th></tr></thead>
+    <tbody>${bodyRows.map((row) => `<tr><td>${escapeHTML(row.name)}</td>${row.cells.map((v) => `<td>${v ? gbp.format(v) : "–"}</td>`).join("")}<td>${gbp.format(row.total)}</td></tr>`).join("")}</tbody>
+    <tfoot><tr><td>Total</td>${yearTotals.map((v) => `<td>${gbp.format(v)}</td>`).join("")}<td>${gbp.format(grand)}</td></tr></tfoot>`;
+  document.getElementById("grand-total").textContent = gbp.format(grand);
+
+  const round = (v) => Math.round(v);
+  lastTSV = [
+    ["Role", ...yearHeads, "Total"],
+    ...bodyRows.map((row) => [row.name, ...row.cells.map(round), round(row.total)]),
+    ["Total", ...yearTotals.map(round), round(grand)]
+  ].map((r) => r.join("\t")).join("\n");
+
+  // Monthly detail
+  const open = new Set([...document.querySelectorAll("#details details[open]")].map((d) => d.dataset.i));
+  document.getElementById("details").innerHTML = roles.map((r, i) => {
+    const res = results[i];
+    if (!res.byMonth.length) return "";
+    return `<details data-i="${i}"${open.has(String(i)) ? " open" : ""}>
+      <summary>${escapeHTML(r.label || `Role ${i + 1}`)}: ${r.grade} point ${r.point}, ${r.fte}% FTE</summary>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Month</th><th>Annual cost rate (100% FTE)</th><th>Days</th><th>Cost</th></tr></thead>
+        <tbody>${res.byMonth.map((m) => `<tr><td>${MONTHS[m.m - 1]} ${m.y}</td><td>${gbp.format(m.annual)}</td><td>${m.days}/${daysInMonth(m.y, m.m)}</td><td>${gbp.format(m.cost)}</td></tr>`).join("")}</tbody>
+        <tfoot><tr><td>Total</td><td></td><td></td><td>${gbp.format(res.total)}</td></tr></tfoot>
+      </table></div>
+    </details>`;
+  }).join("") || `<p class="muted">No costs yet.</p>`;
+}
+
+// ---------- Events ----------
+const rolesEl = document.getElementById("roles");
+
+rolesEl.addEventListener("input", (e) => {
+  const k = e.target.dataset.k;
+  const row = e.target.closest(".role");
+  if (!k || !row) return;
+  const r = roles[+row.dataset.i];
+  if (k === "grade") {
+    r.grade = e.target.value;
+    r.point = CONFIG.grades[r.grade].normal[0];
+    row.querySelector('[data-k="point"]').innerHTML = pointOptions(r.grade, r.point);
+  } else if (k === "point") {
+    r.point = +e.target.value;
+  } else {
+    r[k] = e.target.value;
+  }
+  saveState();
+  renderResults();
+});
+
+rolesEl.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-remove]");
+  if (!btn || roles.length === 1) return;
+  roles.splice(+btn.dataset.remove, 1);
+  saveState();
+  renderRoles();
+  renderResults();
+});
+
+document.getElementById("add-role").addEventListener("click", () => {
+  const prev = roles[roles.length - 1];
+  roles.push(prev ? { ...prev, label: "" } : newRole());
+  saveState();
+  renderRoles();
+  renderResults();
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const msg = document.getElementById("copied");
+  try {
+    await navigator.clipboard.writeText(lastTSV);
+    msg.textContent = "Copied. Paste into Excel or Word.";
+  } catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = lastTSV;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); msg.textContent = "Copied."; } catch (e2) { msg.textContent = "Copy failed."; }
+    ta.remove();
+  }
+  setTimeout(() => { msg.textContent = ""; }, 3000);
+});
+
+renderAssumptions();
+renderRoles();
+renderResults();
+</script>
+</body>
+</html>
