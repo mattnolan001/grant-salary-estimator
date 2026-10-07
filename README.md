@@ -2,6 +2,8 @@
 
 A single-page tool that gives a **very approximate** salary cost for University of Edinburgh research grant applications. Edinburgh Research Office does the final costing.
 
+**Live site:** https://mattnolan001.github.io/grant-salary-estimator/
+
 ## Use
 Open `index.html` in a browser. It needs no server or build step. For each role, enter:
 - grade and spine point
